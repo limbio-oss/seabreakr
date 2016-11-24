@@ -24,7 +24,11 @@ public class CircuitBreakerTest {
         System.out.println(tfOriginal.get()); // bar
 
         CircuitBreaker.circuitBreaker(tfFallback).open();
-        System.out.println(tfOriginal.get()); // exception
+        try {
+            System.out.println(tfOriginal.get()); // exception
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         TestSingle singleOriginal = () -> Mono.just("test-foo");
         TestSingle singleFallback = () -> Mono.just("test-bar");
@@ -35,10 +39,10 @@ public class CircuitBreakerTest {
         TestSingle tsOriginal = CircuitBreaker.newBuilder(TestSingle.class).backend(singleOriginal) //
                 .failover(tsFallback).build();
 
-        tsOriginal.getOne().doOnSuccess(System.out::println); // test-foo
+        tsOriginal.getOne().subscribe(System.out::println); // test-foo
 
         CircuitBreaker.circuitBreaker(tsOriginal).open();
-        tsOriginal.getOne().doOnSuccess(System.out::println); // test-bar
+        tsOriginal.getOne().subscribe(v -> System.out.println(v)); // test-bar
     }
 
     private interface TestFunction {

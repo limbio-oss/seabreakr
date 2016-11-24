@@ -2,12 +2,18 @@ package io.limb.seabreakr;
 
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.MonoProcessor;
+import reactor.core.publisher.MonoSink;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+
+import static io.limb.seabreakr.BreakerExceptions.rethrow;
+import static io.limb.seabreakr.BreakerExceptions.unwrapException;
 
 class JavaProxyCircuitBreaker<T>
         implements CircuitBreaker, InvocationHandler {
@@ -75,21 +81,17 @@ class JavaProxyCircuitBreaker<T>
         Duration duration = Duration.ofNanos(timeout);
 
         Mono<T> mono = Mono.fromFuture(completableFuture).timeout(duration, timeoutHandler)
-                .doOnTerminate(this::handleResult).mapError(this::unwrapException);
+                .mapError(BreakerExceptions::unwrapException).doOnTerminate(this::handleResult);
 
         if (isMono(method)) {
-            return mono;
+            MonoProcessor<T> processor = mono.subscribe();
+            return Mono.from(processor);
         }
         return mono.block();
     }
 
     private NoSuchFailoverException createNoSuchFailoverException() {
         return new NoSuchFailoverException("Circuit breaker cannot execute, no failover available");
-    }
-
-    private Throwable unwrapException(Throwable throwable) {
-        Throwable t = Exceptions.unwrap(throwable);
-        return t instanceof InvocationTargetException ? t.getCause() : t;
     }
 
     @SuppressWarnings("unchecked")
@@ -107,7 +109,8 @@ class JavaProxyCircuitBreaker<T>
                 if (proxy == backend) {
                     context.getMetricsRecorder().recordFailure();
                 }
-                throw throwable;
+                Throwable t = unwrapException(throwable);
+                throw rethrow(t);
             }
         });
     }

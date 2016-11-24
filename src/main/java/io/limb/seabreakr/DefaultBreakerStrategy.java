@@ -47,11 +47,11 @@ public class DefaultBreakerStrategy
                 }
             }
         } else {
-            if (context.getState() != BreakerState.Closed) {
+            /*if (context.getState() != BreakerState.Closed) {
                 if (context.close()) {
                     context.getEventPublisher().fireClosedState();
                 }
-            }
+            }*/
         }
     }
 }
