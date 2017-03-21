@@ -1,5 +1,5 @@
 package io.limb.seabreakr;
 
-public enum BreakerState {
+public enum State {
     Open, HalfOpen, Closed
 }

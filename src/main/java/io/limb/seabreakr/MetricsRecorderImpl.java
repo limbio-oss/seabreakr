@@ -2,11 +2,11 @@ package io.limb.seabreakr;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
-final class BreakerMetricsRecorderImpl
-        implements BreakerMetricsRecorder {
+final class MetricsRecorderImpl
+        implements MetricsRecorder {
 
-    private static final AtomicLongFieldUpdater<BreakerMetricsRecorderImpl> POSITION_UPDATER = //
-            AtomicLongFieldUpdater.newUpdater(BreakerMetricsRecorderImpl.class, "position");
+    private static final AtomicLongFieldUpdater<MetricsRecorderImpl> POSITION_UPDATER = //
+            AtomicLongFieldUpdater.newUpdater(MetricsRecorderImpl.class, "position");
 
     private final BitRing bitRing;
     private final int numOfBufferedEvents;
@@ -14,7 +14,7 @@ final class BreakerMetricsRecorderImpl
     // Only updated through Atomic Updater
     private volatile long position = 0;
 
-    BreakerMetricsRecorderImpl(int numOfBufferedEvents) {
+    MetricsRecorderImpl(int numOfBufferedEvents) {
         this.bitRing = new BitRing(numOfBufferedEvents);
         this.numOfBufferedEvents = this.bitRing.size();
     }
@@ -25,12 +25,12 @@ final class BreakerMetricsRecorderImpl
     }
 
     @Override
-    public int getNumberOfFailedEvents() {
+    public long getNumberOfFailedEvents() {
         return bitRing.cardinality();
     }
 
     @Override
-    public int getNumberOfBufferedEvents() {
+    public long getNumberOfBufferedEvents() {
         return numOfBufferedEvents;
     }
 

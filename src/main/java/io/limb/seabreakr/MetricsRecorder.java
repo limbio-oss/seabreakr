@@ -1,7 +1,7 @@
 package io.limb.seabreakr;
 
-public interface BreakerMetricsRecorder
-        extends BreakerMetrics {
+public interface MetricsRecorder
+        extends Metrics {
 
     void recordSuccess();
 

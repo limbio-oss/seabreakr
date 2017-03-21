@@ -1,9 +1,9 @@
 package io.limb.seabreakr;
 
+import io.limb.seabreakr.spi.EventListener;
 import reactor.core.scheduler.Scheduler;
 
 import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
 
 public interface CircuitBreakerBuilder<T> {
     CircuitBreakerBuilder<T> backend(T backend);
@@ -12,7 +12,7 @@ public interface CircuitBreakerBuilder<T> {
 
     CircuitBreakerBuilder<T> deadline(long timeout, TimeUnit timeUnit);
 
-    CircuitBreakerBuilder<T> listener(BreakerEventListener listener);
+    CircuitBreakerBuilder<T> listener(EventListener listener);
 
     CircuitBreakerBuilder<T> enableCallThrough();
 

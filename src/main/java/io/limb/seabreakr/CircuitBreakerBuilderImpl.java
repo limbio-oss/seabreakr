@@ -1,5 +1,10 @@
 package io.limb.seabreakr;
 
+import io.limb.seabreakr.spi.EventListener;
+import io.limb.seabreakr.spi.Strategy;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -21,21 +26,22 @@ class CircuitBreakerBuilderImpl<T>
     }
 
     private final ServiceType<T> type;
-    private final BreakerStrategy strategy;
+    private final Strategy strategy;
 
-    private final List<BreakerEventListener> listeners = new ArrayList<>();
+    private final List<EventListener> listeners = new ArrayList<>();
 
     private T backend;
     private T failover;
-    private boolean callThrough = false;
     private long timeout = 30;
+    private Scheduler scheduler;
+    private boolean callThrough = false;
     private TimeUnit timeUnit = TimeUnit.SECONDS;
 
     CircuitBreakerBuilderImpl(ServiceType<T> type) {
         this(type, DefaultBreakerStrategy.INSTANCE);
     }
 
-    CircuitBreakerBuilderImpl(ServiceType<T> type, BreakerStrategy strategy) {
+    CircuitBreakerBuilderImpl(ServiceType<T> type, Strategy strategy) {
         this.type = type;
         this.strategy = strategy;
     }
@@ -63,7 +69,7 @@ class CircuitBreakerBuilderImpl<T>
     }
 
     @Override
-    public CircuitBreakerBuilder<T> listener(BreakerEventListener listener) {
+    public CircuitBreakerBuilder<T> listener(EventListener listener) {
         if (!listeners.contains(listener)) {
             listeners.add(listener);
         }
@@ -83,20 +89,27 @@ class CircuitBreakerBuilderImpl<T>
     }
 
     @Override
+    public CircuitBreakerBuilder<T> scheduler(Scheduler scheduler) {
+        this.scheduler = scheduler;
+        return this;
+    }
+
+    @Override
     @SuppressWarnings({"unchecked"})
     public T build() {
-        BreakerEventListener listenerAdapter = null;
+        EventListener listenerAdapter = null;
         if (listeners.size() > 0) {
-            BreakerEventListener[] array = listeners.toArray(new BreakerEventListener[0]);
+            EventListener[] array = listeners.toArray(new EventListener[0]);
             listenerAdapter = e -> Arrays.stream(array).forEach(l -> l.onEvent(e));
         }
 
         long timeout = timeUnit.toNanos(this.timeout);
         Class<? super T> interfaceType = type.getRawType();
         ClassLoader classLoader = type.getRawType().getClassLoader();
+        Scheduler scheduler = this.scheduler == null ? Schedulers.elastic() : this.scheduler;
 
         InvocationHandler invocationHandler = new JavaProxyCircuitBreaker<>(interfaceType, strategy, backend, failover, timeout,
-                listenerAdapter, callThrough);
+                listenerAdapter, callThrough, scheduler);
 
         return (T) Proxy.newProxyInstance(classLoader, new Class[]{interfaceType}, invocationHandler);
     }

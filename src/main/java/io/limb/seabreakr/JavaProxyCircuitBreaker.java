@@ -1,6 +1,11 @@
 package io.limb.seabreakr;
 
+import io.limb.seabreakr.spi.Context;
+import io.limb.seabreakr.spi.EventListener;
+import io.limb.seabreakr.spi.EventPublisher;
+import io.limb.seabreakr.spi.Strategy;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -11,58 +16,23 @@ import static io.limb.seabreakr.BreakerExceptions.rethrow;
 import static io.limb.seabreakr.BreakerExceptions.unwrapException;
 
 class JavaProxyCircuitBreaker<T>
-        implements CircuitBreaker, InvocationHandler {
+        extends AbstractCircuitBreaker<T>
+        implements InvocationHandler {
 
-    private final BreakerEventListener listener;
-    private final BreakerContext context;
-    private final BreakerStrategy strategy;
+    private final Strategy strategy;
     private final boolean callThrough;
-    private final Class<T> type;
+    private final Scheduler scheduler;
     private final long timeout;
-    private final T backend;
-    private final T failover;
 
-    JavaProxyCircuitBreaker(Class<T> type, BreakerStrategy strategy, T backend, //
-                            T failover, long timeout, BreakerEventListener listener, boolean callThrough) {
+    JavaProxyCircuitBreaker(Class<T> type, Strategy strategy, T backend, T failover, long timeout,
+                            EventListener listener, boolean callThrough, Scheduler scheduler) {
 
-        this.type = type;
+        super(type, backend, failover, listener, 1000, ContextImpl::new);
+
         this.strategy = strategy;
-        this.backend = backend;
-        this.failover = failover;
         this.timeout = timeout;
-        this.listener = listener;
+        this.scheduler = scheduler;
         this.callThrough = callThrough;
-        this.context = new BreakerContextImpl(1000, eventPublisher);
-    }
-
-    @Override
-    public void close() {
-        context.close();
-    }
-
-    @Override
-    public void open() {
-        context.open();
-    }
-
-    @Override
-    public boolean isCallAllowed() {
-        return context.isCallAllowed();
-    }
-
-    @Override
-    public BreakerState getState() {
-        return context.getState();
-    }
-
-    @Override
-    public Class<T> getType() {
-        return type;
-    }
-
-    @Override
-    public BreakerMetrics getMetrics() {
-        return context.getMetrics();
     }
 
     @Override
@@ -86,6 +56,7 @@ class JavaProxyCircuitBreaker<T>
 
         Duration duration = Duration.ofNanos(timeout);
         Mono<?> mono = main
+                .subscribeOn(scheduler)
                 .timeout(duration, fallback)
                 .mapError(BreakerExceptions::unwrapException)
                 .doOnTerminate(this::handleResult);
@@ -165,31 +136,4 @@ class JavaProxyCircuitBreaker<T>
             strategy.onSuccess(context, listener);
         }
     }
-
-    private final BreakerEventPublisher eventPublisher = new BreakerEventPublisher() {
-        private final BreakerEvent OPEN_STATE = new BreakerEvent(BreakerState.Open, JavaProxyCircuitBreaker.this);
-        private final BreakerEvent HALF_OPEN_STATE = new BreakerEvent(BreakerState.HalfOpen, JavaProxyCircuitBreaker.this);
-        private final BreakerEvent CLOSED_STATE = new BreakerEvent(BreakerState.Closed, JavaProxyCircuitBreaker.this);
-
-        @Override
-        public void fireOpenState() {
-            fireEvent(OPEN_STATE);
-        }
-
-        @Override
-        public void fireHalfOpenState() {
-            fireEvent(HALF_OPEN_STATE);
-        }
-
-        @Override
-        public void fireClosedState() {
-            fireEvent(CLOSED_STATE);
-        }
-
-        private void fireEvent(BreakerEvent event) {
-            if (listener != null) {
-                listener.onEvent(event);
-            }
-        }
-    };
 }

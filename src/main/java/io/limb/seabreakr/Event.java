@@ -1,16 +1,16 @@
 package io.limb.seabreakr;
 
-public final class BreakerEvent {
+public final class Event {
 
-    private final BreakerState state;
+    private final State state;
     private final CircuitBreaker circuitBreaker;
 
-    BreakerEvent(BreakerState state, CircuitBreaker circuitBreaker) {
+    Event(State state, CircuitBreaker circuitBreaker) {
         this.state = state;
         this.circuitBreaker = circuitBreaker;
     }
 
-    public BreakerState getState() {
+    public State getState() {
         return state;
     }
 
@@ -23,7 +23,7 @@ public final class BreakerEvent {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        BreakerEvent that = (BreakerEvent) o;
+        Event that = (Event) o;
 
         if (state != that.state) return false;
         return circuitBreaker != null ? circuitBreaker.equals(that.circuitBreaker) : that.circuitBreaker == null;

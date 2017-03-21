@@ -1,13 +1,17 @@
 package io.limb.seabreakr;
 
+import io.limb.seabreakr.spi.Context;
+import io.limb.seabreakr.spi.EventListener;
+import io.limb.seabreakr.spi.Strategy;
+
 import java.util.Random;
 
 public class DefaultBreakerStrategy
-        implements BreakerStrategy {
+        implements Strategy {
 
     public static final float DEFAULT_FAILURE_THRESHOLD = 20.f;
 
-    public static final BreakerStrategy INSTANCE = new DefaultBreakerStrategy(DEFAULT_FAILURE_THRESHOLD);
+    public static final Strategy INSTANCE = new DefaultBreakerStrategy(DEFAULT_FAILURE_THRESHOLD);
 
     private final Random random = new Random();
     private final float failureThreshold;
@@ -17,20 +21,20 @@ public class DefaultBreakerStrategy
     }
 
     @Override
-    public boolean isCallAllowed(BreakerContext context) {
+    public boolean isCallAllowed(Context context) {
         return context.isCallAllowed() || isAvailabilityCheck();
     }
 
     @Override
-    public void onFailure(BreakerContext context, BreakerEventListener listener) {
-        BreakerMetricsRecorder metricsRecorder = context.getMetricsRecorder();
+    public void onFailure(Context context, EventListener listener) {
+        MetricsRecorder metricsRecorder = context.getMetricsRecorder();
         metricsRecorder.recordFailure();
         verifyFailureThreshold(context, metricsRecorder);
     }
 
     @Override
-    public void onSuccess(BreakerContext context, BreakerEventListener listener) {
-        BreakerMetricsRecorder metricsRecorder = context.getMetricsRecorder();
+    public void onSuccess(Context context, EventListener listener) {
+        MetricsRecorder metricsRecorder = context.getMetricsRecorder();
         metricsRecorder.recordSuccess();
         verifyFailureThreshold(context, metricsRecorder);
     }
@@ -39,9 +43,9 @@ public class DefaultBreakerStrategy
         return random.nextInt(100) <= 20;
     }
 
-    private void verifyFailureThreshold(BreakerContext context, BreakerMetrics metrics) {
+    private void verifyFailureThreshold(Context context, Metrics metrics) {
         if (metrics.getFailureRate() > failureThreshold) {
-            if (context.getState() == BreakerState.Closed) {
+            if (context.getState() == State.Closed) {
                 if (context.open()) {
                     context.getEventPublisher().fireOpenState();
                 }

@@ -1,6 +1,6 @@
-package io.limb.seabreakr;
+package io.limb.seabreakr.spi;
 
-public interface BreakerEventPublisher {
+public interface EventPublisher {
 
     void fireOpenState();
 

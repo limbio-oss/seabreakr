@@ -1,5 +1,7 @@
 package io.limb.seabreakr;
 
+import io.limb.seabreakr.spi.Strategy;
+
 import java.lang.reflect.Proxy;
 
 public interface CircuitBreaker {
@@ -10,17 +12,17 @@ public interface CircuitBreaker {
 
     boolean isCallAllowed();
 
-    BreakerState getState();
+    State getState();
 
     Class<?> getType();
 
-    BreakerMetrics getMetrics();
+    Metrics getMetrics();
 
     static <T> CircuitBreakerBuilder<T> newBuilder(ServiceType<T> serviceType) {
         return new CircuitBreakerBuilderImpl<>(serviceType);
     }
 
-    static <T> CircuitBreakerBuilder<T> newBuilder(ServiceType<T> serviceType, BreakerStrategy strategy) {
+    static <T> CircuitBreakerBuilder<T> newBuilder(ServiceType<T> serviceType, Strategy strategy) {
         return new CircuitBreakerBuilderImpl<>(serviceType, strategy);
     }
 
@@ -28,7 +30,7 @@ public interface CircuitBreaker {
         return newBuilder(ServiceType.serviceType(type));
     }
 
-    static <T> CircuitBreakerBuilder<T> newBuilder(Class<T> type, BreakerStrategy strategy) {
+    static <T> CircuitBreakerBuilder<T> newBuilder(Class<T> type, Strategy strategy) {
         return newBuilder(ServiceType.serviceType(type), strategy);
     }
 
